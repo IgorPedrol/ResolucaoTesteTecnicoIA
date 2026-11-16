@@ -6,7 +6,8 @@
 <img width="2070" height="1106" alt="FluxogramaIA" src="https://github.com/user-attachments/assets/5722346a-cf49-477e-b0bf-b5bdd4d99bf4" />
 
 
-* <h3></h3>
+### Porque não usar uma IA tradicional para responder ao usuário? Alguns problemas identificados:
+- **Alucinação** -> Quando um modelo generativo retorna uma *resposta* *incorreta* ou *equivocada* para uma pergunta da qual ele não sabe a resposta, mas responde com confiança.
 
 
 ## Como definir a confiança na Resposta da IA?
