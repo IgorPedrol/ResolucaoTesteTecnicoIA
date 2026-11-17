@@ -16,11 +16,9 @@
 O pseudocódigo abaixo segue o mesmo fluxo do fluxograma: **mensagem -> classificação de intenção -> busca por similaridade -> resposta ou escalonamento**.
 
 ```
-função atender(mensagem):
+função atender(msg):
 
-    msg = mascarar_dados_sensiveis(mensagem)          # CPF, e-mail, telefone antes de qualquer log
-
-    # 1. Classificação de intenção (saída em JSON, temperatura 0)
+    # 1. Classificação de intenção 
     intencao = classificar_intencao(msg)              # {categoria, pede_humano, urgencia}
 
     se intencao.pede_humano  OU  intencao.categoria == "fora_do_escopo":
@@ -37,13 +35,13 @@ função atender(mensagem):
 
     # 4. Geração restrita ao contexto recuperado
     contexto = trechos_das_faqs(top_k acima do LIMIAR)
-    saida    = llm_local(prompt_restrito(msg, contexto), temperatura = 0)   # {"resposta": texto | null}
+    saida    = llm_local(prompt_restrito(msg, contexto))   # {"resposta": texto | null}
 
     # 5. Decisão de confiança (geração)
     se saida.resposta == null:                        # modelo declarou não ter base para responder
         retornar escalar(msg, motivo = "sem_base_no_contexto")
 
-    registrar(msg_mascarada, faq_id, similaridade, caminho = "automatico")
+    registrar(msg, faq_id, similaridade, caminho = "automatico")
     retornar resposta_automatica(saida.resposta, faq_id)
 
 
