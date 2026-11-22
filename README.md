@@ -65,7 +65,7 @@ função escalar(msg, motivo):
 - **Trade-off assumido:** um modelo 8B local (ex.: llama3.1 8B) é menos capaz que modelos grandes de API. Por isso o modelo **não responde "de cabeça"**: ele só reformula o que está na FAQ (ver abaixo).
 
 ### Por que RAG e não só o modelo?
-- Um modelo sozinho responderia com o que aprendeu no treino, e não com o que a empresa realmente faz. Isso gera **alucinação** com tom de confiança.
+- Um modelo sozinho responderia com o que aprendeu no treino, e não com o que a empresa realmente faz. Isso gera **alucinação**, respondendo a pergunta mesmo sem ter uma resposta concreta.
 - Com RAG a resposta nasce de um trecho do `faq_interno.md`, o que a torna **auditável** (sabemos qual FAQ originou a resposta) e **atualizável** (basta editar a FAQ e reindexar, sem retreinar nada).
 - O RAG também nos dá um **sinal de confiança mensurável** (similaridade), que é a base da regra de negócio de escalonamento.
 
@@ -73,7 +73,6 @@ função escalar(msg, motivo):
 - **Modelo de embedding:** `nomic-embed-text`, rodando no próprio Ollama (continua 100% local). Serve para transformar o texto do documento faq_interno em vetores usando a similaridade de cosseno.
 - **Chunking:** **1 pergunta + resposta = 1 chunk.** A FAQ já vem segmentada em unidades semânticas completas, então quebrar mais picotaria a resposta e misturar FAQs diferentes só diluiria a similaridade.
 - **O que é embedado:** a pergunta (e, se os testes mostrarem ganho, pergunta + resposta). O cliente escreve algo parecido com a *pergunta*, então é ela que precisa casar.
-- **Armazenamento:** com 18 FAQs, uma busca por força bruta em memória (cosseno com numpy) ou um SQLite/Chroma local basta. Um banco vetorial distribuído seria complexidade sem ganho; só passa a fazer sentido se a base crescer bastante.
 - **Métrica:** similaridade de cosseno (já citada acima).
 
 ### Como medir e definir o limiar de confiança
@@ -90,7 +89,7 @@ função escalar(msg, motivo):
 
 | Risco | Por que importa neste cenário | Mitigação proposta |
 |---|---|---|
-| **Alucinação** | Um 8B local pode inventar passos, prazos ou valores que não estão na FAQ. | Prompt restrito ao contexto recuperado; temperatura 0; saída em JSON com `resposta: null` quando não houver base; limiar de similaridade calibrado; revisão amostral das respostas automáticas; mostrar ao cliente de qual FAQ veio a resposta. |
+| **Alucinação** | Um 8B local pode inventar passos, prazos ou valores que não estão na FAQ. | Prompt restrito ao contexto recuperado; saída em JSON com `resposta: null` quando não houver base; limiar de similaridade calibrado; revisão amostral das respostas automáticas; mostrar ao cliente de qual FAQ veio a resposta. |
 | **Latência do modelo local** | Sem GPU adequada, a geração pode ser lenta; o cliente fica esperando no atendimento inicial. | Manter o modelo carregado na memória (`keep_alive`); usar versão quantizada; contexto curto (só o top-k); **usar a similaridade como classificador barato** sempre que possível, evitando chamadas extras ao LLM; *streaming* da resposta; *timeout* -> **escalona** em vez de deixar o cliente sem retorno; cache para perguntas repetidas. Medir a latência real no hardware da empresa antes de prometer um SLA. |
 | **Tamanho de contexto** | O Ollama tem um `num_ctx` padrão pequeno e, se o prompt exceder, **trunca silenciosamente**, podendo cortar justamente a instrução do sistema. | Definir `num_ctx` explicitamente (conferindo o valor padrão da versão instalada); limitar k e o histórico da conversa; medir o tamanho do prompt montado e alertar/escalar quando se aproximar do limite. |
 | **Vazamento de dados** | A restrição principal do projeto é nada sair do ambiente. | Ollama escutando apenas em `localhost`/rede interna; sem APIs externas nem telemetria; mascarar dados sensíveis antes de logar; controle de acesso aos logs; **teste de rede** bloqueando saída para a internet e verificando que o pipeline continua funcionando. |
@@ -123,6 +122,9 @@ Estimativa para **1 desenvolvedor**, implementando o pipeline real. Os valores s
 
 * <h2>Uso de IA</h2>
 
-- **Ferramentas usadas:** Claude (Anthropic) e Gemini(Google).
-- **Em quais partes:** organização e redação do rascunho da justificativa técnica e do pseudocódigo com claude, também utilizei o gemini para esclarecer as diferentes alternativas de resolução para o problema e conhecer melhor sobre os problemas e dificuldades.
+- **Ferramentas usadas:** Claude (Anthropic) e Gemini (Google).
+- **Em quais partes:**
+- ![Claude](https://img.shields.io/badge/Claude-D97757?style=for-the-badge&logo=claude&logoColor=white) -> auxílio na organização da resposta, redação do rascunho da justificativa técnica e do pseudocódigo.
+- ![Gemini](https://img.shields.io/badge/Google%20Gemini-886FBF?style=for-the-badge&logo=googlegemini&logoColor=white)  -> esclarecimento das diferentes alternativas de resolução para o problema e conhecer melhor sobre os problemas e dificuldades que surgem com cada solução, além de entender conceitos chave para a resolução do desafio.
+- *Gemini (Problema)* me deu sugestões que acabavam fugindo do escopo de manter os dados locais, eu precisei corrigir ele algumas vezes e ser bem detalhista na minha explicação e prompts.
 
